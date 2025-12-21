@@ -209,24 +209,41 @@ Choose from multiple built-in personalities to customize SAM's communication sty
 ## Building from Source
 
 ### Prerequisites
-- macOS 14.0+
-- Xcode 26.1+ with Swift 6.2.1+
-- cmake (for llama.cpp): `brew install cmake`
+
+1. **Install Homebrew** (if not already installed):
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+   Or visit [https://brew.sh](https://brew.sh)
+
+2. **Install cmake:**
+   ```bash
+   brew install cmake
+   ```
+
+3. **Install Xcode:**
+   - Download from the Mac App Store
+   - Open Xcode and accept the license agreement
+
+4. **Configure Xcode command line tools:**
+   ```bash
+   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+   ```
+
+5. **Install Metal toolchain:**
+   ```bash
+   xcodebuild -downloadComponent "MetalToolchain"
+   ```
 
 ### Build Steps
 
-1. **Clone the repository:**
+1. **Clone the repository with submodules:**
    ```bash
-   git clone https://github.com/SyntheticAutonomicMind/SAM.git
+   git clone https://github.com/SyntheticAutonomicMind/SAM.git --recursive
    cd SAM
    ```
 
-2. **Initialize submodules:**
-   ```bash
-   git submodule update --init --recursive
-   ```
-
-3. **Build:**
+2. **Build:**
    ```bash
    # Debug build
    make build-debug
@@ -235,7 +252,7 @@ Choose from multiple built-in personalities to customize SAM's communication sty
    make build-release
    ```
 
-4. **Run:**
+3. **Run:**
    ```bash
    # Run from build directory
    .build/Build/Products/Debug/SAM.app/Contents/MacOS/SAM
@@ -244,7 +261,7 @@ Choose from multiple built-in personalities to customize SAM's communication sty
    make run
    ```
 
-**For complete build instructions**, see [BUILDING.md](BUILDING.md).
+**For complete build instructions and troubleshooting**, see [BUILDING.md](BUILDING.md).
 
 ---
 
