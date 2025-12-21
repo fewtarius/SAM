@@ -3,21 +3,29 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 Andrew Wyatt (Fewtarius)
 
 # Script to update appcast.xml with new release entry
-# Usage: ./scripts/update_appcast.sh <version> <zip_path>
+# Usage: ./scripts/update_appcast.sh <version> <zip_path> [private_key_path]
 
 set -e
 
 VERSION="$1"
 ZIP_PATH="$2"
+PRIVATE_KEY_PATH="${3:-$HOME/.sam-sparkle-keys/private_key.txt}"
 
 if [ -z "$VERSION" ] || [ -z "$ZIP_PATH" ]; then
-    echo "Usage: $0 <version> <zip_path>"
+    echo "Usage: $0 <version> <zip_path> [private_key_path]"
     echo "Example: $0 20251214.1 dist/SAM-20251214.1.zip"
+    echo "         $0 20251214.1 dist/SAM-20251214.1.zip /tmp/sparkle_key.txt"
     exit 1
 fi
 
 if [ ! -f "$ZIP_PATH" ]; then
     echo "Error: ZIP file not found: $ZIP_PATH"
+    exit 1
+fi
+
+if [ ! -f "$PRIVATE_KEY_PATH" ]; then
+    echo "Error: Sparkle private key not found: $PRIVATE_KEY_PATH"
+    echo "Please run scripts/setup_sparkle.sh to generate keys"
     exit 1
 fi
 
@@ -33,6 +41,33 @@ FILE_SIZE=$(stat -f%z "$ZIP_PATH")
 # Get current date in RFC 822 format
 PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S %z")
 
+# Find sign_update binary
+SIGN_UPDATE_BINARY=""
+if [ -f ".build/artifacts/sparkle/Sparkle/bin/sign_update" ]; then
+    SIGN_UPDATE_BINARY=".build/artifacts/sparkle/Sparkle/bin/sign_update"
+elif [ -f ".build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update" ]; then
+    SIGN_UPDATE_BINARY=".build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
+elif [ -f ".build/checkouts/Sparkle/sign_update" ]; then
+    SIGN_UPDATE_BINARY=".build/checkouts/Sparkle/sign_update"
+fi
+
+if [ -z "$SIGN_UPDATE_BINARY" ]; then
+    echo "Error: sign_update binary not found"
+    echo "Please run 'make build-debug' or 'make build-release' first"
+    exit 1
+fi
+
+# Sign the ZIP file to get EdDSA signature
+echo "Signing ZIP file with EdDSA key..."
+SIGNATURE=$("$SIGN_UPDATE_BINARY" "$ZIP_PATH" -f "$PRIVATE_KEY_PATH")
+
+if [ -z "$SIGNATURE" ]; then
+    echo "Error: Failed to generate signature"
+    exit 1
+fi
+
+echo "  Signature: $SIGNATURE"
+
 # Default release notes (GitHub link)
 RELEASE_NOTES="<h2>What's New in SAM $VERSION</h2>
                 <ul>
@@ -43,6 +78,7 @@ echo "Updating appcast.xml for version $VERSION"
 echo "  ZIP: $ZIP_PATH"
 echo "  Size: $FILE_SIZE bytes"
 echo "  Date: $PUB_DATE"
+echo "  EdDSA Signature: ${SIGNATURE:0:40}..."
 echo ""
 
 # Create new entry
@@ -58,6 +94,7 @@ NEW_ENTRY="        <!-- Latest release: v$VERSION -->
                 url=\"https://github.com/SyntheticAutonomicMind/SAM/releases/download/$VERSION/SAM-$VERSION.zip\"
                 sparkle:version=\"$VERSION\"
                 sparkle:shortVersionString=\"$VERSION\"
+                sparkle:edSignature=\"$SIGNATURE\"
                 length=\"$FILE_SIZE\"
                 type=\"application/octet-stream\"
             />
